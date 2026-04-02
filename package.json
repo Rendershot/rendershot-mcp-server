@@ -1,0 +1,38 @@
+{
+  "name": "@rendershot/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for the Rendershot screenshot and PDF generation API",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "rendershot-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "screenshot",
+    "pdf",
+    "rendershot",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
