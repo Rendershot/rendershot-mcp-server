@@ -11,8 +11,9 @@ export class RendershotError extends Error {
 
 interface JobStatus {
   job_id: string;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: string;
   error_message: string | null;
+  result_url: string | null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -32,11 +33,16 @@ export class RendershotClient {
   }
 
   async post(path: string, body: unknown): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: this.headers,
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      throw new RendershotError("NETWORK_ERROR", `Could not reach ${this.baseUrl}: ${String(err)}`, 0);
+    }
     if (!res.ok) {
       await this.throwApiError(res);
     }
@@ -44,9 +50,14 @@ export class RendershotClient {
   }
 
   async get(path: string): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      headers: this.headers,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        headers: this.headers,
+      });
+    } catch (err) {
+      throw new RendershotError("NETWORK_ERROR", `Could not reach ${this.baseUrl}: ${String(err)}`, 0);
+    }
     if (!res.ok) {
       await this.throwApiError(res);
     }
@@ -54,9 +65,14 @@ export class RendershotClient {
   }
 
   private async getBytes(path: string): Promise<ArrayBuffer> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      headers: this.headers,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        headers: this.headers,
+      });
+    } catch (err) {
+      throw new RendershotError("NETWORK_ERROR", `Could not reach ${this.baseUrl}: ${String(err)}`, 0);
+    }
     if (!res.ok) {
       await this.throwApiError(res);
     }
@@ -80,14 +96,16 @@ export class RendershotClient {
     const deadline = Date.now() + 5 * 60 * 1000;
     while (Date.now() < deadline) {
       await sleep(2000);
-      const status = (await this.get(`/v1/jobs/${jobId}`)) as JobStatus;
-      if (status.status === "completed") {
+      const job = (await this.get(`/v1/jobs/${jobId}`)) as JobStatus;
+      // result_url is set only when status=completed AND the file is stored on disk —
+      // it is the most reliable signal that the result is ready to download.
+      if (job.result_url) {
         return this.getBytes(`/v1/jobs/${jobId}/result`);
       }
-      if (status.status === "failed") {
+      if (job.status === "failed") {
         throw new RendershotError(
           "JOB_FAILED",
-          status.error_message ?? "Render job failed",
+          job.error_message ?? "Render job failed",
           422,
         );
       }

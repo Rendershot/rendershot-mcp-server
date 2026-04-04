@@ -49,7 +49,7 @@ Add to your MCP settings:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `RENDERSHOT_API_KEY` | Yes | — | Your Rendershot API key |
-| `RENDERSHOT_BASE_URL` | No | `https://api.rendershot.com` | API base URL (override for self-hosting) |
+| `RENDERSHOT_BASE_URL` | No | `https://api.rendershot.io` | API base URL (override for self-hosting) |
 
 ## Tools
 

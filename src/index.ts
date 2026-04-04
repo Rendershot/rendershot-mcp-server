@@ -13,7 +13,7 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const baseUrl = process.env.RENDERSHOT_BASE_URL ?? "https://api.rendershot.com";
+const baseUrl = process.env.RENDERSHOT_BASE_URL ?? "https://api.rendershot.io";
 const client = new RendershotClient(apiKey, baseUrl);
 
 const server = new McpServer({

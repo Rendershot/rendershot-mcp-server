@@ -104,37 +104,79 @@ export async function handleBulk(args: BulkArgs, client: RendershotClient) {
     throw err;
   }
 
+  // Build a lookup of job index → input format/type so we can set mimeType later
+  const jobMeta = new Map(
+    args.jobs.map((job, i) => [
+      i,
+      {
+        type: job.type,
+        mimeType: job.type === "pdf"
+          ? "application/pdf"
+          : (job as z.infer<typeof ScreenshotJobSchema>).format === "jpeg"
+            ? "image/jpeg"
+            : "image/png",
+      },
+    ]),
+  );
+
   // Poll all queued jobs concurrently
   const results = await Promise.all(
     bulk.jobs.map(async (jobResult) => {
       if (!jobResult.job_id || jobResult.error_code) {
         return {
           index: jobResult.index,
+          rendered: false,
           error: jobResult.error_code ?? "SUBMISSION_FAILED",
           error_message: jobResult.error_message ?? "Job failed to submit",
-          result: null,
+          bytes: null as ArrayBuffer | null,
         };
       }
       try {
         const bytes = await client.pollUntilDone(jobResult.job_id);
-        const base64 = Buffer.from(bytes).toString("base64");
-        return { index: jobResult.index, error: null, error_message: null, result: base64 };
+        return { index: jobResult.index, rendered: true, error: null, error_message: null, bytes };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return { index: jobResult.index, error: "POLL_FAILED", error_message: message, result: null };
+        return { index: jobResult.index, rendered: false, error: "POLL_FAILED", error_message: message, bytes: null };
       }
     }),
   );
 
+  // Build the text summary (no base64 — keeps the tool result small so it fits in the model context)
   const summary = {
     credits_used: bulk.credits_used,
     credits_remaining: bulk.credits_remaining,
     submitted: bulk.submitted,
     failed: bulk.failed,
-    results,
+    results: results.map(({ index, rendered, error, error_message }) => ({
+      index,
+      rendered,
+      error,
+      error_message,
+    })),
   };
 
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }],
-  };
+  // Return the summary as text, then each rendered file as a separate content block
+  type ContentBlock =
+    | { type: "text"; text: string }
+    | { type: "image"; data: string; mimeType: string };
+
+  const content: ContentBlock[] = [
+    { type: "text", text: JSON.stringify(summary, null, 2) },
+  ];
+
+  for (const result of results) {
+    if (result.rendered && result.bytes) {
+      const meta = jobMeta.get(result.index);
+      const mimeType = meta?.mimeType ?? "image/png";
+      const base64 = Buffer.from(result.bytes).toString("base64");
+      // PDFs don't have a native MCP content type — embed as text with a header
+      if (mimeType === "application/pdf") {
+        content.push({ type: "text", text: `PDF for job ${result.index} (base64):\n${base64}` });
+      } else {
+        content.push({ type: "image", data: base64, mimeType });
+      }
+    }
+  }
+
+  return { content };
 }
