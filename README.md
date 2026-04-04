@@ -1,6 +1,8 @@
 # @rendershot/mcp-server
 
-Model Context Protocol (MCP) server for the [Rendershot](https://rendershot.com) screenshot and PDF generation API. Lets AI agents (Claude, Cursor, etc.) capture screenshots and generate PDFs directly as tool calls.
+Model Context Protocol (MCP) server for the [Rendershot](https://rendershot.io) screenshot and PDF generation API. Lets AI agents (Claude, Cursor, etc.) capture screenshots and generate PDFs directly as tool calls.
+
+**Source:** [github.com/Rendershot/rendershot-mcp-server](https://github.com/Rendershot/rendershot-mcp-server)
 
 ## Quick start
 
