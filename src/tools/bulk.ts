@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
@@ -32,10 +34,14 @@ export const bulkSchema = {
     .min(1)
     .max(20)
     .describe("Array of 1–20 screenshot or PDF jobs to render."),
+  output_dir: z.string().optional().describe(
+    "Directory to save all rendered files into. Files are named automatically: 001_screenshot.png, 002_pdf.pdf, etc. If omitted, results are returned as base64 in the response."
+  ),
 };
 
 type BulkArgs = {
   jobs: z.infer<typeof ScreenshotJobSchema | typeof PDFJobSchema>[];
+  output_dir?: string;
 };
 
 interface BulkJobResult {
@@ -154,6 +160,40 @@ export async function handleBulk(args: BulkArgs, client: RendershotClient) {
       error_message,
     })),
   };
+
+  // If output_dir is set: write all files to disk and return text summary only
+  if (args.output_dir) {
+    await fs.mkdir(args.output_dir, { recursive: true });
+    const savedPaths: Record<number, string> = {};
+    for (const result of results) {
+      if (!result.rendered || !result.bytes) continue;
+      const meta = jobMeta.get(result.index);
+      const ext = meta?.mimeType === "application/pdf" ? "pdf"
+        : meta?.mimeType === "image/jpeg" ? "jpeg"
+        : "png";
+      const type = meta?.type ?? "file";
+      const filename = `${String(result.index + 1).padStart(3, "0")}_${type}.${ext}`;
+      const filepath = path.join(args.output_dir, filename);
+      await fs.writeFile(filepath, Buffer.from(result.bytes));
+      savedPaths[result.index] = filepath;
+    }
+    const diskSummary = {
+      credits_used: bulk.credits_used,
+      credits_remaining: bulk.credits_remaining,
+      submitted: bulk.submitted,
+      failed: bulk.failed,
+      results: results.map(({ index, rendered, error, error_message }) => ({
+        index,
+        rendered,
+        saved_to: savedPaths[index] ?? null,
+        error,
+        error_message,
+      })),
+    };
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(diskSummary, null, 2) }],
+    };
+  }
 
   // Return the summary as text, then each rendered file as a separate content block
   type ContentBlock =

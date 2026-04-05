@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
@@ -12,6 +13,7 @@ export const screenshotSchema = {
   full_page: z.boolean().default(false).describe("Capture the full scrollable page."),
   wait_for: z.string().default("networkidle").describe("When to consider the page loaded: load | domcontentloaded | networkidle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
+  output_path: z.string().optional().describe("Absolute or relative path to save the image file (e.g. /tmp/shot.png). If omitted, the image is returned as base64 in the response."),
 };
 
 type ScreenshotArgs = {
@@ -24,6 +26,7 @@ type ScreenshotArgs = {
   full_page: boolean;
   wait_for: string;
   delay_ms: number;
+  output_path?: string;
 };
 
 export async function handleScreenshot(args: ScreenshotArgs, client: RendershotClient) {
@@ -64,6 +67,13 @@ export async function handleScreenshot(args: ScreenshotArgs, client: RendershotC
       throw new McpError(ErrorCode.InternalError, err.message);
     }
     throw err;
+  }
+
+  if (args.output_path) {
+    await fs.writeFile(args.output_path, Buffer.from(bytes));
+    return {
+      content: [{ type: "text" as const, text: `Screenshot saved to ${args.output_path}` }],
+    };
   }
 
   const base64 = Buffer.from(bytes).toString("base64");

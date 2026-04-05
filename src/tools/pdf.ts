@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
@@ -10,6 +11,7 @@ export const pdfSchema = {
   print_background: z.boolean().default(true).describe("Print background graphics and colors."),
   wait_for: z.string().default("networkidle").describe("When to consider the page loaded: load | domcontentloaded | networkidle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
+  output_path: z.string().optional().describe("Absolute or relative path to save the PDF file (e.g. /tmp/invoice.pdf). If omitted, the PDF is returned as base64 in the response."),
 };
 
 type PDFArgs = {
@@ -20,6 +22,7 @@ type PDFArgs = {
   print_background: boolean;
   wait_for: string;
   delay_ms: number;
+  output_path?: string;
 };
 
 export async function handlePDF(args: PDFArgs, client: RendershotClient) {
@@ -59,6 +62,13 @@ export async function handlePDF(args: PDFArgs, client: RendershotClient) {
       throw new McpError(ErrorCode.InternalError, err.message);
     }
     throw err;
+  }
+
+  if (args.output_path) {
+    await fs.writeFile(args.output_path, Buffer.from(bytes));
+    return {
+      content: [{ type: "text" as const, text: `PDF saved to ${args.output_path}` }],
+    };
   }
 
   const base64 = Buffer.from(bytes).toString("base64");
