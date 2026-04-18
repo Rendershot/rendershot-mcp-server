@@ -70,6 +70,7 @@ Capture a screenshot of a URL or HTML string. Returns a base64-encoded image.
 | `full_page` | boolean | `false` | Capture the full scrollable page |
 | `wait_for` | string | `dom_content_loaded` | `load` \| `dom_content_loaded` \| `network_idle` \| `commit` \| CSS selector |
 | `delay_ms` | 0–10000 | `0` | Extra delay after page load (ms) |
+| `ai_cleanup` | `fast` \| `thorough` | — | Remove cookie banners/popups before capture. `fast` uses JS heuristics (1 credit); `thorough` adds an LLM pass (3 credits) |
 
 ### `generate_pdf`
 
@@ -84,6 +85,7 @@ Generate a PDF from a URL or HTML string. Returns the PDF as a base64-encoded st
 | `print_background` | boolean | `true` | Print background graphics/colors |
 | `wait_for` | string | `dom_content_loaded` | Same as screenshot |
 | `delay_ms` | 0–10000 | `0` | Extra delay after page load (ms) |
+| `ai_cleanup` | `fast` \| `thorough` | — | Same as screenshot |
 
 ### `bulk_render`
 

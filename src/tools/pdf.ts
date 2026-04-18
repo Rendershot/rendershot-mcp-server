@@ -11,6 +11,7 @@ export const pdfSchema = {
   print_background: z.boolean().default(true).describe("Print background graphics and colors."),
   wait_for: z.string().default("dom_content_loaded").describe("When to consider the page loaded: load | dom_content_loaded | network_idle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
+  ai_cleanup: z.enum(["fast", "thorough"]).optional().describe("Remove cookie banners/popups before capture. 'fast' uses JS heuristics (1 credit). 'thorough' adds an LLM pass (3 credits; requires Anthropic key on the server)."),
   output_path: z.string().optional().describe("Absolute or relative path to save the PDF file (e.g. /tmp/invoice.pdf). If omitted, the PDF is returned as base64 in the response."),
 };
 
@@ -22,6 +23,7 @@ type PDFArgs = {
   print_background: boolean;
   wait_for: string;
   delay_ms: number;
+  ai_cleanup?: "fast" | "thorough";
   output_path?: string;
 };
 
@@ -43,6 +45,7 @@ export async function handlePDF(args: PDFArgs, client: RendershotClient) {
       print_background: args.print_background,
       wait_for: args.wait_for,
       delay_ms: args.delay_ms,
+      ai_cleanup: args.ai_cleanup,
       async: true,
     })) as { job_id: string };
     jobId = response.job_id;

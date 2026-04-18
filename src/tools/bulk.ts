@@ -15,6 +15,7 @@ const ScreenshotJobSchema = z.object({
   full_page: z.boolean().default(false),
   wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
+  ai_cleanup: z.enum(["fast", "thorough"]).optional(),
 });
 
 const PDFJobSchema = z.object({
@@ -26,6 +27,7 @@ const PDFJobSchema = z.object({
   print_background: z.boolean().default(true),
   wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
+  ai_cleanup: z.enum(["fast", "thorough"]).optional(),
 });
 
 export const bulkSchema = {
@@ -73,6 +75,7 @@ function buildJobPayload(job: z.infer<typeof ScreenshotJobSchema | typeof PDFJob
       full_page: job.full_page,
       wait_for: job.wait_for,
       delay_ms: job.delay_ms,
+      ai_cleanup: job.ai_cleanup,
     };
   }
   return {
@@ -84,6 +87,7 @@ function buildJobPayload(job: z.infer<typeof ScreenshotJobSchema | typeof PDFJob
     print_background: job.print_background,
     wait_for: job.wait_for,
     delay_ms: job.delay_ms,
+    ai_cleanup: job.ai_cleanup,
   };
 }
 
