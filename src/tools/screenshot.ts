@@ -11,7 +11,7 @@ export const screenshotSchema = {
   viewport_width: z.number().int().min(1).max(3840).default(1280).describe("Viewport width in pixels."),
   viewport_height: z.number().int().min(1).max(2160).default(720).describe("Viewport height in pixels."),
   full_page: z.boolean().default(false).describe("Capture the full scrollable page."),
-  wait_for: z.string().default("networkidle").describe("When to consider the page loaded: load | domcontentloaded | networkidle | commit | CSS selector."),
+  wait_for: z.string().default("dom_content_loaded").describe("When to consider the page loaded: load | dom_content_loaded | network_idle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
   output_path: z.string().optional().describe("Absolute or relative path to save the image file (e.g. /tmp/shot.png). If omitted, the image is returned as base64 in the response."),
 };

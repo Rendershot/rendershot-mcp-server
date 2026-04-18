@@ -68,7 +68,7 @@ Capture a screenshot of a URL or HTML string. Returns a base64-encoded image.
 | `viewport_width` | 1–3840 | `1280` | Viewport width in pixels |
 | `viewport_height` | 1–2160 | `720` | Viewport height in pixels |
 | `full_page` | boolean | `false` | Capture the full scrollable page |
-| `wait_for` | string | `networkidle` | `load` \| `domcontentloaded` \| `networkidle` \| `commit` \| CSS selector |
+| `wait_for` | string | `dom_content_loaded` | `load` \| `dom_content_loaded` \| `network_idle` \| `commit` \| CSS selector |
 | `delay_ms` | 0–10000 | `0` | Extra delay after page load (ms) |
 
 ### `generate_pdf`
@@ -82,7 +82,7 @@ Generate a PDF from a URL or HTML string. Returns the PDF as a base64-encoded st
 | `format` | `A3` \| `A4` \| `Letter` \| `Legal` | `A4` | Paper size |
 | `orientation` | `portrait` \| `landscape` | `portrait` | Page orientation |
 | `print_background` | boolean | `true` | Print background graphics/colors |
-| `wait_for` | string | `networkidle` | Same as screenshot |
+| `wait_for` | string | `dom_content_loaded` | Same as screenshot |
 | `delay_ms` | 0–10000 | `0` | Extra delay after page load (ms) |
 
 ### `bulk_render`

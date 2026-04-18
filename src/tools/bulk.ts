@@ -13,7 +13,7 @@ const ScreenshotJobSchema = z.object({
   viewport_width: z.number().int().min(1).max(3840).default(1280),
   viewport_height: z.number().int().min(1).max(2160).default(720),
   full_page: z.boolean().default(false),
-  wait_for: z.string().default("networkidle"),
+  wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
 });
 
@@ -24,7 +24,7 @@ const PDFJobSchema = z.object({
   format: z.enum(["A3", "A4", "Letter", "Legal"]).default("A4"),
   orientation: z.enum(["portrait", "landscape"]).default("portrait"),
   print_background: z.boolean().default(true),
-  wait_for: z.string().default("networkidle"),
+  wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
 });
 
