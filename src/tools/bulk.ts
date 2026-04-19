@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { authFieldsSchema, applyAuthToPayload } from "./auth.js";
 
 const ScreenshotJobSchema = z.object({
   type: z.literal("screenshot"),
@@ -16,6 +17,7 @@ const ScreenshotJobSchema = z.object({
   wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
   ai_cleanup: z.enum(["fast", "thorough"]).optional(),
+  ...authFieldsSchema,
 });
 
 const PDFJobSchema = z.object({
@@ -28,6 +30,7 @@ const PDFJobSchema = z.object({
   wait_for: z.string().default("dom_content_loaded"),
   delay_ms: z.number().int().min(0).max(10000).default(0),
   ai_cleanup: z.enum(["fast", "thorough"]).optional(),
+  ...authFieldsSchema,
 });
 
 export const bulkSchema = {
@@ -64,31 +67,33 @@ interface BulkResponse {
 }
 
 function buildJobPayload(job: z.infer<typeof ScreenshotJobSchema | typeof PDFJobSchema>): unknown {
-  if (job.type === "screenshot") {
-    return {
-      type: "screenshot",
-      url: job.url,
-      html: job.html,
-      format: job.format,
-      quality: job.quality,
-      viewport: { width: job.viewport_width, height: job.viewport_height },
-      full_page: job.full_page,
-      wait_for: job.wait_for,
-      delay_ms: job.delay_ms,
-      ai_cleanup: job.ai_cleanup,
-    };
-  }
-  return {
-    type: "pdf",
-    url: job.url,
-    html: job.html,
-    format: job.format,
-    orientation: job.orientation,
-    print_background: job.print_background,
-    wait_for: job.wait_for,
-    delay_ms: job.delay_ms,
-    ai_cleanup: job.ai_cleanup,
-  };
+  const payload: Record<string, unknown> =
+    job.type === "screenshot"
+      ? {
+          type: "screenshot",
+          url: job.url,
+          html: job.html,
+          format: job.format,
+          quality: job.quality,
+          viewport: { width: job.viewport_width, height: job.viewport_height },
+          full_page: job.full_page,
+          wait_for: job.wait_for,
+          delay_ms: job.delay_ms,
+          ai_cleanup: job.ai_cleanup,
+        }
+      : {
+          type: "pdf",
+          url: job.url,
+          html: job.html,
+          format: job.format,
+          orientation: job.orientation,
+          print_background: job.print_background,
+          wait_for: job.wait_for,
+          delay_ms: job.delay_ms,
+          ai_cleanup: job.ai_cleanup,
+        };
+  applyAuthToPayload(payload, job);
+  return payload;
 }
 
 export async function handleBulk(args: BulkArgs, client: RendershotClient) {
