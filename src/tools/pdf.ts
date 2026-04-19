@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { authFieldsSchema, applyAuthToPayload, type AuthRenderArgs } from "./auth.js";
 
 export const pdfSchema = {
   url: z.string().url().optional().describe("URL of the page to render. Exactly one of url or html is required."),
@@ -12,10 +13,11 @@ export const pdfSchema = {
   wait_for: z.string().default("dom_content_loaded").describe("When to consider the page loaded: load | dom_content_loaded | network_idle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
   ai_cleanup: z.enum(["fast", "thorough"]).optional().describe("Remove cookie banners/popups before capture. 'fast' uses JS heuristics (1 credit). 'thorough' adds an LLM pass (3 credits; requires Anthropic key on the server)."),
+  ...authFieldsSchema,
   output_path: z.string().optional().describe("Absolute or relative path to save the PDF file (e.g. /tmp/invoice.pdf). If omitted, the PDF is returned as base64 in the response."),
 };
 
-type PDFArgs = {
+type PDFArgs = AuthRenderArgs & {
   url?: string;
   html?: string;
   format: "A3" | "A4" | "Letter" | "Legal";
@@ -35,19 +37,22 @@ export async function handlePDF(args: PDFArgs, client: RendershotClient) {
     throw new McpError(ErrorCode.InvalidParams, "Provide either 'url' or 'html', not both.");
   }
 
+  const payload: Record<string, unknown> = {
+    url: args.url,
+    html: args.html,
+    format: args.format,
+    orientation: args.orientation,
+    print_background: args.print_background,
+    wait_for: args.wait_for,
+    delay_ms: args.delay_ms,
+    ai_cleanup: args.ai_cleanup,
+    async: true,
+  };
+  applyAuthToPayload(payload, args);
+
   let jobId: string;
   try {
-    const response = (await client.post("/v1/pdf", {
-      url: args.url,
-      html: args.html,
-      format: args.format,
-      orientation: args.orientation,
-      print_background: args.print_background,
-      wait_for: args.wait_for,
-      delay_ms: args.delay_ms,
-      ai_cleanup: args.ai_cleanup,
-      async: true,
-    })) as { job_id: string };
+    const response = (await client.post("/v1/pdf", payload)) as { job_id: string };
     jobId = response.job_id;
   } catch (err) {
     if (err instanceof McpError) throw err;

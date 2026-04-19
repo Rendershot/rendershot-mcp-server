@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { z } from "zod";
 import { RendershotClient, RendershotError } from "../client.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { authFieldsSchema, applyAuthToPayload, type AuthRenderArgs } from "./auth.js";
 
 export const screenshotSchema = {
   url: z.string().url().optional().describe("URL of the page to screenshot. Exactly one of url or html is required."),
@@ -14,10 +15,11 @@ export const screenshotSchema = {
   wait_for: z.string().default("dom_content_loaded").describe("When to consider the page loaded: load | dom_content_loaded | network_idle | commit | CSS selector."),
   delay_ms: z.number().int().min(0).max(10000).default(0).describe("Extra delay in milliseconds after page load before capturing."),
   ai_cleanup: z.enum(["fast", "thorough"]).optional().describe("Remove cookie banners/popups before capture. 'fast' uses JS heuristics (1 credit). 'thorough' adds an LLM pass (3 credits; requires Anthropic key on the server)."),
+  ...authFieldsSchema,
   output_path: z.string().optional().describe("Absolute or relative path to save the image file (e.g. /tmp/shot.png). If omitted, the image is returned as base64 in the response."),
 };
 
-type ScreenshotArgs = {
+type ScreenshotArgs = AuthRenderArgs & {
   url?: string;
   html?: string;
   format: "png" | "jpeg";
@@ -39,20 +41,23 @@ export async function handleScreenshot(args: ScreenshotArgs, client: RendershotC
     throw new McpError(ErrorCode.InvalidParams, "Provide either 'url' or 'html', not both.");
   }
 
+  const payload: Record<string, unknown> = {
+    url: args.url,
+    html: args.html,
+    format: args.format,
+    quality: args.quality,
+    viewport: { width: args.viewport_width, height: args.viewport_height },
+    full_page: args.full_page,
+    wait_for: args.wait_for,
+    delay_ms: args.delay_ms,
+    ai_cleanup: args.ai_cleanup,
+    async: true,
+  };
+  applyAuthToPayload(payload, args);
+
   let jobId: string;
   try {
-    const response = (await client.post("/v1/screenshot", {
-      url: args.url,
-      html: args.html,
-      format: args.format,
-      quality: args.quality,
-      viewport: { width: args.viewport_width, height: args.viewport_height },
-      full_page: args.full_page,
-      wait_for: args.wait_for,
-      delay_ms: args.delay_ms,
-      ai_cleanup: args.ai_cleanup,
-      async: true,
-    })) as { job_id: string };
+    const response = (await client.post("/v1/screenshot", payload)) as { job_id: string };
     jobId = response.job_id;
   } catch (err) {
     if (err instanceof McpError) throw err;
